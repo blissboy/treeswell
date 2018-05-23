@@ -261,7 +261,22 @@ function createBranch(treeHeight, spread, zStep) {
         let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
         let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
         let normalMesh = new THREE.Mesh( geometry, material );
+        normalMesh.position.x = points[i].x;
+        normalMesh.position.y = points[i].y;
+        normalMesh.position.z = points[i].z;
+
         scene.add( normalMesh );
+
+        let sphGeometry = new THREE.SphereGeometry( 50,32,32 );
+
+        sphGeometry.position = points[i]
+
+        let sphMaterial = new THREE.MeshBasicMaterial( {color: 0xff0000} );
+        let sphere = new THREE.Mesh( sphGeometry, sphMaterial );
+        sphere.position.x = points[i].x;
+        scene.add( sphere );
+
+
     }
 
 
@@ -276,9 +291,9 @@ function createCurveFromPoints(curve) {
 function createTree() {
 
     const MAX_TREE_SIZE = 120;
-    const WANDER = 2500;
+    const WANDER = 250;
     const Z_STEP = .5;
-    const NUM_BRANCHES = 9;
+    const NUM_BRANCHES = 1;
 
     //let material = new THREE.MeshPhongMaterial({color: values.tubes.static.color, specular: 0xffffff});
     let material = new THREE.LineBasicMaterial({
