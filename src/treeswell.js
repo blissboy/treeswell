@@ -239,6 +239,40 @@ function drawNormalToXY(length) {
     scene.add( normalMesh );
 }
 
+
+function createBranch(treeHeight, spread, zStep) {
+    let x = 0, y = 0, z = 0, unity;
+    let points = [];
+    while (z < treeHeight) {
+        points.push(new THREE.Vector3(x, y, z));
+        unity = Math.random() > .5 ? 1 : -1;
+        x += (unity * Math.random() * spread * (z / treeHeight));
+        unity = Math.random() > .5 ? 1 : -1;
+        y += (unity * Math.random() * spread * (z / treeHeight));
+        z += zStep;
+    }
+
+    // add segments for debugging
+    let i=0;
+    while (i+1 < points.length) {
+        let normalCurve = new THREE.LineCurve3( points[i], points[i+1]);
+        i++;
+
+        let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
+        let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
+        let normalMesh = new THREE.Mesh( geometry, material );
+        scene.add( normalMesh );
+    }
+
+
+    return createCurveFromPoints(points);
+}
+
+function createCurveFromPoints(curve) {
+    return new THREE.CatmullRomCurve3(curve); //, false, 'chordal', 0.5);
+}
+
+
 function createTree() {
 
     const MAX_TREE_SIZE = 120;
@@ -260,25 +294,13 @@ function createTree() {
     let branches = [];
     let branch;
     while (branches.length < NUM_BRANCHES) {
-        let x = 0, y = 0, z = 0;
-        let points = [];
-        while (z < MAX_TREE_SIZE) {
-            points.push(new THREE.Vector3(x, y, z));
-            x += (Math.random() * WANDER * (z / MAX_TREE_SIZE));
-            y += (Math.random() * WANDER * (z / MAX_TREE_SIZE));
-            z += Z_STEP;
-        }
-
-        branch = createCurveFromPoints(points);
+        branch = createBranch(MAX_TREE_SIZE, WANDER, Z_STEP, branch);
         branches.push(branch);
 
         // treeGroup.add(new THREE.Mesh(
         //     new THREE.TubeGeometry(branch, points.length, 150, 25, false),
         //     material
         // ));
-
-
-
 
         let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.getPoints(200));
         treeGroup.add(new THREE.Line(branchGeometry, material));
@@ -301,6 +323,3 @@ function updateScene() {
     //processFadeouts();
 }
 
-function createCurveFromPoints(points) {
-    return new THREE.CatmullRomCurve3(points); //, false, 'chordal', 0.5);
-}
