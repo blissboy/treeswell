@@ -1,5 +1,11 @@
 "use strict";
 
+const NUM_BRANCHES = 10;
+const MAX_TREE_HEIGHT = 1200;
+const SPREAD = 29;
+const Z_STEP = 10;
+
+
 const ambient_light_name = 'ambientLight';
 var scene, camera, renderer, cameraControls;
 var renderCount = 0;
@@ -172,7 +178,10 @@ function newInit() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
     //camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
-    camera.position.z = 3000;
+    camera.position.z = MAX_TREE_HEIGHT / 2;
+    camera.position.y = 0
+    camera.position.x = MAX_TREE_HEIGHT;
+    camera.lookAt(0,MAX_TREE_HEIGHT/2,0);
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -181,6 +190,9 @@ function newInit() {
     document.body.appendChild(renderer.domElement);
 
     cameraControls = new THREE.OrbitControls(camera, renderer.domElement);
+    cameraControls.maxAzimuthAngle = Math.PI/2;
+    cameraControls.maxPolarAngle = Math.PI/2;
+
     //orbit.enableZoom = false;
 
     var lights = [];
@@ -200,7 +212,7 @@ function newInit() {
 
     createTree();
     //drawPlane();
-    drawNormalToXY(1000);
+    drawNormalToXZ(1000);
 
     var prevFog = false;
 
@@ -229,9 +241,9 @@ function drawPlane() {
     scene.add( plane );
 }
 
-function drawNormalToXY(length) {
+function drawNormalToXZ(length) {
 
-    let normalCurve = new THREE.LineCurve3( new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,length));
+    let normalCurve = new THREE.LineCurve3( new THREE.Vector3(0,0,0), new THREE.Vector3(0,length,0));
 
     let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
     let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
@@ -240,16 +252,16 @@ function drawNormalToXY(length) {
 }
 
 
-function createBranch(treeHeight, spread, zStep) {
+function createBranch(treeHeight, spread, yStep) {
     let x = 0, y = 0, z = 0, unity;
     let points = [];
-    while (z < treeHeight) {
+    while (y < treeHeight) {
         points.push(new THREE.Vector3(x, y, z));
         unity = Math.random() > .5 ? 1 : -1;
-        x += (unity * Math.random() * spread * (z / treeHeight));
+        x += (unity * Math.random() * spread * (y / treeHeight));
         unity = Math.random() > .5 ? 1 : -1;
-        y += (unity * Math.random() * spread * (z / treeHeight));
-        z += zStep;
+        z += (unity * Math.random() * spread * (y / treeHeight));
+        y += yStep;
     }
 
     // add segments for debugging
@@ -258,24 +270,14 @@ function createBranch(treeHeight, spread, zStep) {
         let normalCurve = new THREE.LineCurve3( points[i], points[i+1]);
         i++;
 
-        let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
-        let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
+        let geometry = new THREE.TubeGeometry( normalCurve, 5, 2, 8, false );
+        let material = new THREE.MeshBasicMaterial( { color: 0x00dd00 } );
         let normalMesh = new THREE.Mesh( geometry, material );
         normalMesh.position.x = points[i].x;
         normalMesh.position.y = points[i].y;
         normalMesh.position.z = points[i].z;
 
         scene.add( normalMesh );
-
-        let sphGeometry = new THREE.SphereGeometry( 50,32,32 );
-
-        sphGeometry.position = points[i]
-
-        let sphMaterial = new THREE.MeshBasicMaterial( {color: 0xff0000} );
-        let sphere = new THREE.Mesh( sphGeometry, sphMaterial );
-        sphere.position.x = points[i].x;
-        scene.add( sphere );
-
 
     }
 
@@ -290,10 +292,10 @@ function createCurveFromPoints(curve) {
 
 function createTree() {
 
-    const MAX_TREE_SIZE = 120;
-    const WANDER = 250;
-    const Z_STEP = .5;
-    const NUM_BRANCHES = 1;
+    //const MAX_TREE_SIZE = 1200;
+    //const WANDER = 25;
+    //const Z_STEP = 10;
+    const NUM_BRANCHES = 10;
 
     //let material = new THREE.MeshPhongMaterial({color: values.tubes.static.color, specular: 0xffffff});
     let material = new THREE.LineBasicMaterial({
@@ -309,7 +311,7 @@ function createTree() {
     let branches = [];
     let branch;
     while (branches.length < NUM_BRANCHES) {
-        branch = createBranch(MAX_TREE_SIZE, WANDER, Z_STEP, branch);
+        branch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
         branches.push(branch);
 
         // treeGroup.add(new THREE.Mesh(
