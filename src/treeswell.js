@@ -1,6 +1,6 @@
 "use strict";
 
-const NUM_BRANCHES = 10;
+const NUM_BRANCHES = 100;
 const MAX_TREE_HEIGHT = 1200;
 const SPREAD = 29;
 const Z_STEP = 10;
@@ -212,7 +212,7 @@ function newInit() {
 
     createTree();
     //drawPlane();
-    drawNormalToXZ(1000);
+    //drawNormalToXZ(1000);
 
     var prevFog = false;
 
@@ -264,24 +264,6 @@ function createBranch(treeHeight, spread, yStep) {
         y += yStep;
     }
 
-    // add segments for debugging
-    let i=0;
-    while (i+1 < points.length) {
-        let normalCurve = new THREE.LineCurve3( points[i], points[i+1]);
-        i++;
-
-        let geometry = new THREE.TubeGeometry( normalCurve, 5, 2, 8, false );
-        let material = new THREE.MeshBasicMaterial( { color: 0x00dd00 } );
-        let normalMesh = new THREE.Mesh( geometry, material );
-        normalMesh.position.x = points[i].x;
-        normalMesh.position.y = points[i].y;
-        normalMesh.position.z = points[i].z;
-
-        scene.add( normalMesh );
-
-    }
-
-
     return createCurveFromPoints(points);
 }
 
@@ -295,7 +277,7 @@ function createTree() {
     //const MAX_TREE_SIZE = 1200;
     //const WANDER = 25;
     //const Z_STEP = 10;
-    const NUM_BRANCHES = 10;
+    //const NUM_BRANCHES = 10;
 
     //let material = new THREE.MeshPhongMaterial({color: values.tubes.static.color, specular: 0xffffff});
     let material = new THREE.LineBasicMaterial({
@@ -311,13 +293,12 @@ function createTree() {
     let branches = [];
     let branch;
     while (branches.length < NUM_BRANCHES) {
+
+
+        herehere is where we will change the branch to have a name so we can pop it off and remove from scene (and know the name to add to scene)
+
         branch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
         branches.push(branch);
-
-        // treeGroup.add(new THREE.Mesh(
-        //     new THREE.TubeGeometry(branch, points.length, 150, 25, false),
-        //     material
-        // ));
 
         let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.getPoints(200));
         treeGroup.add(new THREE.Line(branchGeometry, material));
