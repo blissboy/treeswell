@@ -1,9 +1,22 @@
 "use strict";
 
-const NUM_BRANCHES = 100;
+const NUM_BRANCHES = 600;
 const MAX_TREE_HEIGHT = 1200;
 const SPREAD = 29;
 const Z_STEP = 10;
+const BRANCH_GROUP = "branchGroup";
+const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.5
+});
+
+
+
+
+var branchNumber = 0;
+var branches = [];
+var branchGroup;
 
 
 const ambient_light_name = 'ambientLight';
@@ -210,9 +223,13 @@ function newInit() {
 
     //mesh = new THREE.Object3D();
 
-    createTree();
+    //createTree();
     //drawPlane();
     //drawNormalToXZ(1000);
+
+    branchGroup = new THREE.Group();
+    freshenBranches();
+    scene.add(branchGroup);
 
     var prevFog = false;
 
@@ -251,7 +268,6 @@ function drawNormalToXZ(length) {
     scene.add( normalMesh );
 }
 
-
 function createBranch(treeHeight, spread, yStep) {
     let x = 0, y = 0, z = 0, unity;
     let points = [];
@@ -264,7 +280,10 @@ function createBranch(treeHeight, spread, yStep) {
         y += yStep;
     }
 
-    return createCurveFromPoints(points);
+    return {
+        curve: createCurveFromPoints(points),
+        name: 'branch' + branchNumber++
+    };
 }
 
 function createCurveFromPoints(curve) {
@@ -288,19 +307,15 @@ function createTree() {
 
 
     let treeGroup = new THREE.Group();
-    treeGroup.name = 'tubeGroup';
+    treeGroup.name = BRANCH_GROUP;
 
-    let branches = [];
     let branch;
     while (branches.length < NUM_BRANCHES) {
-
-
-        herehere is where we will change the branch to have a name so we can pop it off and remove from scene (and know the name to add to scene)
 
         branch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
         branches.push(branch);
 
-        let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.getPoints(200));
+        let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.curve.getPoints(200));
         treeGroup.add(new THREE.Line(branchGeometry, material));
 
         // treeGroup.add(new THREE.Mesh(
@@ -314,7 +329,26 @@ function createTree() {
 
 }
 
+function freshenBranches() {
+    let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+    branches.push(newBranch);
+    let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
+    let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
+    newLine.name = newBranch.name;
+
+    branchGroup.add(newLine);
+
+    //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
+    if ( branches.length > NUM_BRANCHES ) {
+        branches.shift().name;
+        branchGroup.children.shift();
+
+        //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
+    }
+}
+
 function updateScene() {
+    freshenBranches();
     //updateGeometries();
     //updateLighting();
     //updateCamera();
