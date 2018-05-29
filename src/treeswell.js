@@ -1,14 +1,14 @@
 "use strict";
 
-const NUM_BRANCHES = 600;
-const MAX_TREE_HEIGHT = 1200;
-const SPREAD = 29;
-const Z_STEP = 10;
+const NUM_BRANCHES = 1600;
+const MAX_TREE_HEIGHT = 120;
+const SPREAD = 99;
+const Z_STEP = 1;
 const BRANCH_GROUP = "branchGroup";
 const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
-    color: 0xffffff,
+    color: 0xdd4444,
     transparent: true,
-    opacity: 0.5
+    opacity: 0.21
 });
 
 
@@ -28,29 +28,6 @@ var mesh;
 
 
 var values = {
-    bubble: {
-        radius: 300,
-        latitudePoints: 29,
-        longitudePoints: 7,
-        color: 0xff00ff
-    },
-    tubes: {
-        controlType: 'dynamic',
-        static: {
-            color: 0xeeeeee
-        },
-        dynamic: {
-            oscillator: 'sin60draw',
-            color: {
-                rMin: 255,
-                rMax: 12,
-                gMin: 0,
-                gMax: 128,
-                bMin: 20,
-                bMax: 255
-            }
-        }
-    },
     lights: {
         pointLights: [
             {
@@ -86,7 +63,7 @@ var values = {
         ],
         ambientLight: {
             intensity: 0.22,
-            color: 0xffffff
+            color: 0x444444
         }
     },
     oscillatorTypes: [
@@ -209,9 +186,9 @@ function newInit() {
     //orbit.enableZoom = false;
 
     var lights = [];
-    lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-    lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-    lights[2] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[0] = new THREE.PointLight(0x0000ff, 1, 0);
+    lights[1] = new THREE.PointLight(0x00ff00, 1, 0);
+    lights[2] = new THREE.PointLight(0xff0000, 1, 0);
 
     lights[0].position.set(0, 2000, 0);
     lights[1].position.set(1000, 2000, 1000);
@@ -225,7 +202,7 @@ function newInit() {
 
     //createTree();
     //drawPlane();
-    //drawNormalToXZ(1000);
+    drawNormalToXZ(1000);
 
     branchGroup = new THREE.Group();
     freshenBranches();
@@ -235,10 +212,10 @@ function newInit() {
 
     var render = function () {
         requestAnimationFrame(render);
-        // if ( ! options.fixed ) {
-        //     mesh.rotation.x += 0.005;
-        //     mesh.rotation.y += 0.005;
-        // }
+        if ( ! options.fixed ) {
+            mesh.rotation.x += 0.005;
+            mesh.rotation.y += 0.005;
+        }
         updateScene();
         renderer.render(scene, camera);
     };
@@ -282,6 +259,8 @@ function createBranch(treeHeight, spread, yStep) {
 
     return {
         curve: createCurveFromPoints(points),
+        //geometry: getGeometryForBranch(),
+        //material: getMaterialForBranch(),
         name: 'branch' + branchNumber++
     };
 }
@@ -316,7 +295,8 @@ function createTree() {
         branches.push(branch);
 
         let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.curve.getPoints(200));
-        treeGroup.add(new THREE.Line(branchGeometry, material));
+        //treeGroup.add(new THREE.Line(branchGeometry, material));
+        treeGroup.add(new THREE.Mesh(branchGeometry, material));
 
         // treeGroup.add(new THREE.Mesh(
         //     new THREE.BufferGeometry.setFromPoints(branch.getPoints()) //(branch, points.length, 150, 25, false),
@@ -333,7 +313,7 @@ function freshenBranches() {
     let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
     branches.push(newBranch);
     let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
-    let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
+    let newLine = new THREE.Mesh(branchGeometry, BRANCH_MATERIAL);
     newLine.name = newBranch.name;
 
     branchGroup.add(newLine);
