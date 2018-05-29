@@ -1,14 +1,14 @@
 "use strict";
 
 const NUM_BRANCHES = 1600;
-const MAX_TREE_HEIGHT = 120;
+const MAX_TREE_HEIGHT = 1200;
 const SPREAD = 99;
 const Z_STEP = 1;
 const BRANCH_GROUP = "branchGroup";
 const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
-    color: 0xdd4444,
+    color: 0xffffff,
     transparent: true,
-    opacity: 0.21
+    opacity: 0.8
 });
 
 
@@ -186,9 +186,9 @@ function newInit() {
     //orbit.enableZoom = false;
 
     var lights = [];
-    lights[0] = new THREE.PointLight(0x0000ff, 1, 0);
-    lights[1] = new THREE.PointLight(0x00ff00, 1, 0);
-    lights[2] = new THREE.PointLight(0xff0000, 1, 0);
+    lights[0] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[1] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[2] = new THREE.PointLight(0xffffff, 1, 0);
 
     lights[0].position.set(0, 2000, 0);
     lights[1].position.set(1000, 2000, 1000);
@@ -310,20 +310,45 @@ function createTree() {
 }
 
 function freshenBranches() {
-    let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
-    branches.push(newBranch);
-    let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
-    let newLine = new THREE.Mesh(branchGeometry, BRANCH_MATERIAL);
-    newLine.name = newBranch.name;
+    if ( branches.length == 0) {
+        let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+        branches.push(newBranch);
 
-    branchGroup.add(newLine);
+        let geometry = new THREE.TubeGeometry( newBranch.curve, 500, 5, 8, false );
+        let material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+        let mesh = new THREE.Mesh( geometry, material );
+        mesh.add( new THREE.Mesh(
 
-    //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
-    if ( branches.length > NUM_BRANCHES ) {
-        branches.shift().name;
-        branchGroup.children.shift();
+            new THREE.Geometry(),
 
-        //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
+            new THREE.MeshPhongMaterial( {
+                color: 0x156289,
+                emissive: 0x072534,
+                side: THREE.DoubleSide,
+                flatShading: true
+            } )
+
+        ) );
+
+
+        branchGroup.add(mesh);
+
+
+
+
+        let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
+        let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
+        newLine.name = newBranch.name;
+
+        branchGroup.add(newLine);
+
+        //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
+        if (branches.length > NUM_BRANCHES) {
+            branches.shift().name;
+            branchGroup.children.shift();
+
+            //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
+        }
     }
 }
 
