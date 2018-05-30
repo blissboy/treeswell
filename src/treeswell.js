@@ -1,9 +1,9 @@
 "use strict";
 
-const NUM_BRANCHES = 1600;
-const MAX_TREE_HEIGHT = 1200;
-const SPREAD = 99;
-const Z_STEP = 1;
+const NUM_BRANCHES = 90;
+const MAX_TREE_HEIGHT = 12000;
+const SPREAD = 990;
+const Z_STEP = 100;
 const BRANCH_GROUP = "branchGroup";
 const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
     color: 0xffffff,
@@ -310,46 +310,40 @@ function createTree() {
 }
 
 function freshenBranches() {
-    if ( branches.length == 0) {
+    //if ( branches.length == 0) {
         let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
         branches.push(newBranch);
 
-        let geometry = new THREE.TubeGeometry( newBranch.curve, 500, 5, 8, false );
-        let material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+        let geometry = new THREE.TubeBufferGeometry( newBranch.curve, 500, 5, 8, false );
+
+        let material = new THREE.MeshPhongMaterial( {
+            color: 0x156289,
+            emissive: 0x072534,
+            side: THREE.DoubleSide,
+            flatShading: true
+        } );
+
+
         let mesh = new THREE.Mesh( geometry, material );
-        mesh.add( new THREE.Mesh(
-
-            new THREE.Geometry(),
-
-            new THREE.MeshPhongMaterial( {
-                color: 0x156289,
-                emissive: 0x072534,
-                side: THREE.DoubleSide,
-                flatShading: true
-            } )
-
-        ) );
-
-
         branchGroup.add(mesh);
 
 
 
 
-        let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
-        let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
-        newLine.name = newBranch.name;
-
-        branchGroup.add(newLine);
+        // let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
+        // let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
+        // newLine.name = newBranch.name;
+        //
+        // branchGroup.add(newLine);
 
         //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
         if (branches.length > NUM_BRANCHES) {
-            branches.shift().name;
+            //branches.shift().name;
             branchGroup.children.shift();
 
             //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
         }
-    }
+    //}
 }
 
 function updateScene() {
