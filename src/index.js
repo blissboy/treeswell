@@ -1,5 +1,9 @@
 "use strict";
 
+var THREE = require('THREE');
+var OrbitControls = require('three-orbit-controls')(THREE);
+var dat = require("dat.gui");
+
 const NUM_BRANCHES = 90;
 const MAX_TREE_HEIGHT = 12000;
 const SPREAD = 990;
@@ -10,9 +14,6 @@ const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
     transparent: true,
     opacity: 0.8
 });
-
-
-
 
 var branchNumber = 0;
 var branches = [];
@@ -25,7 +26,6 @@ var renderCount = 0;
 var gui;
 
 var mesh;
-
 
 var values = {
     lights: {
@@ -156,7 +156,15 @@ var values = {
 
 };
 
-var render = function () {
+
+newInit();
+render();
+
+
+
+
+
+function render () {
     renderCount++;
     requestAnimationFrame(render);
     updateScene();
@@ -164,6 +172,7 @@ var render = function () {
 };
 
 function newInit() {
+    //gui = new dat.GUI();
     gui = new dat.GUI();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
@@ -179,7 +188,7 @@ function newInit() {
     renderer.setClearColor(0x000000, 1);
     document.body.appendChild(renderer.domElement);
 
-    cameraControls = new THREE.OrbitControls(camera, renderer.domElement);
+    cameraControls = new OrbitControls(camera, renderer.domElement);
     cameraControls.maxAzimuthAngle = Math.PI/2;
     cameraControls.maxPolarAngle = Math.PI/2;
 
