@@ -5,6 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "dat.gui": "^0.7.2",
+    "socket.io": "^2.1.1",
+    "socket.io-client": "^2.1.1",
     "three": "^0.92.0",
     "three-orbit-controls": "^82.1.0"
   },
@@ -15,7 +17,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack",
-    "watch": "webpack --watch"
+    "watch": "webpack --devtool --watch"
   },
   "repository": {
     "type": "git",

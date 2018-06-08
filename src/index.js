@@ -3,6 +3,7 @@
 var THREE = require('THREE');
 var OrbitControls = require('three-orbit-controls')(THREE);
 var dat = require("dat.gui");
+var io = require('socket.io-client');
 
 const NUM_BRANCHES = 90;
 const MAX_TREE_HEIGHT = 12000;
@@ -28,6 +29,7 @@ var gui;
 var mesh;
 
 var values = {
+    kinectServer: 'http://localhost:8000',
     lights: {
         pointLights: [
             {
@@ -161,9 +163,6 @@ newInit();
 render();
 
 
-
-
-
 function render () {
     renderCount++;
     requestAnimationFrame(render);
@@ -171,33 +170,38 @@ function render () {
     renderer.render(scene, camera);
 };
 
-function newInit() {
-    //gui = new dat.GUI();
-    gui = new dat.GUI();
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
-    //camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
-    camera.position.z = MAX_TREE_HEIGHT / 2;
-    camera.position.y = 0
-    camera.position.x = MAX_TREE_HEIGHT;
-    camera.lookAt(0,MAX_TREE_HEIGHT/2,0);
+function createCamera() {
+    let newCam = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
+    newCam.position.z = MAX_TREE_HEIGHT / 2;
+    newCam.position.y = 0
+    newCam.position.x = MAX_TREE_HEIGHT;
+    newCam.lookAt(0,MAX_TREE_HEIGHT/2,0);
 
-    renderer = new THREE.WebGLRenderer({antialias: true});
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 1);
-    document.body.appendChild(renderer.domElement);
+    return newCam;
+}
 
-    cameraControls = new OrbitControls(camera, renderer.domElement);
-    cameraControls.maxAzimuthAngle = Math.PI/2;
-    cameraControls.maxPolarAngle = Math.PI/2;
+function createRenderer() {
+    let newRenderer = new THREE.WebGLRenderer({antialias: true});
+    newRenderer.setPixelRatio(window.devicePixelRatio);
+    newRenderer.setSize(window.innerWidth, window.innerHeight);
+    newRenderer.setClearColor(0x000000, 1);
 
-    //orbit.enableZoom = false;
+    return newRenderer;
+}
 
-    var lights = [];
-    lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-    lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-    lights[2] = new THREE.PointLight(0xffffff, 1, 0);
+function createCameraControls(camera, renderer) {
+    let newCamControl = new OrbitControls(camera, renderer.domElement);
+    newCamControl.maxAzimuthAngle = Math.PI/2;
+    newCamControl.maxPolarAngle = Math.PI/2;
+
+    return newCamControl;
+}
+
+function createLights(scene) {
+    let lights = [];
+    lights[0] = new THREE.PointLight(0xff0000, 1, 0);
+    lights[1] = new THREE.PointLight(0x00ff00, 1, 0);
+    lights[2] = new THREE.PointLight(0x0000ff, 1, 0);
 
     lights[0].position.set(0, 2000, 0);
     lights[1].position.set(1000, 2000, 1000);
@@ -206,18 +210,35 @@ function newInit() {
     scene.add(lights[0]);
     scene.add(lights[1]);
     scene.add(lights[2]);
+}
 
-    //mesh = new THREE.Object3D();
+function setupKinectSocket() {
+    // connect
+    return io.connect('http://192.168.1.78:8000/');
+}
 
-    //createTree();
-    //drawPlane();
-    drawNormalToXZ(1000);
+
+
+function newInit() {
+    let kinectSocket = setupKinectSocket();
+
+    kinectSocket.on('bodyFrame', (body) => {
+        console.log(body);
+    });
+
+
+    gui = new dat.GUI();
+    scene = new THREE.Scene();
+    camera = createCamera();
+    renderer = createRenderer();
+    document.body.appendChild(renderer.domElement);
+
+    cameraControls = createCameraControls(camera, renderer);
+    createLights(scene);
 
     branchGroup = new THREE.Group();
     freshenBranches();
     scene.add(branchGroup);
-
-    var prevFog = false;
 
     var render = function () {
         requestAnimationFrame(render);
@@ -235,23 +256,6 @@ function newInit() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     }, false);
 
-}
-
-function drawPlane() {
-    var geometry = new THREE.PlaneGeometry( 2500, 2500, 32, 32 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
-    var plane = new THREE.Mesh( geometry, material );
-    scene.add( plane );
-}
-
-function drawNormalToXZ(length) {
-
-    let normalCurve = new THREE.LineCurve3( new THREE.Vector3(0,0,0), new THREE.Vector3(0,length,0));
-
-    let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
-    let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
-    let normalMesh = new THREE.Mesh( geometry, material );
-    scene.add( normalMesh );
 }
 
 function createBranch(treeHeight, spread, yStep) {
@@ -278,46 +282,6 @@ function createCurveFromPoints(curve) {
     return new THREE.CatmullRomCurve3(curve); //, false, 'chordal', 0.5);
 }
 
-
-function createTree() {
-
-    //const MAX_TREE_SIZE = 1200;
-    //const WANDER = 25;
-    //const Z_STEP = 10;
-    //const NUM_BRANCHES = 10;
-
-    //let material = new THREE.MeshPhongMaterial({color: values.tubes.static.color, specular: 0xffffff});
-    let material = new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.5
-    });
-
-
-    let treeGroup = new THREE.Group();
-    treeGroup.name = BRANCH_GROUP;
-
-    let branch;
-    while (branches.length < NUM_BRANCHES) {
-
-        branch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
-        branches.push(branch);
-
-        let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.curve.getPoints(200));
-        //treeGroup.add(new THREE.Line(branchGeometry, material));
-        treeGroup.add(new THREE.Mesh(branchGeometry, material));
-
-        // treeGroup.add(new THREE.Mesh(
-        //     new THREE.BufferGeometry.setFromPoints(branch.getPoints()) //(branch, points.length, 150, 25, false),
-        //     material
-        // ));
-
-    }
-
-    scene.add(treeGroup);
-
-}
-
 function freshenBranches() {
     //if ( branches.length == 0) {
         let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
@@ -326,31 +290,17 @@ function freshenBranches() {
         let geometry = new THREE.TubeBufferGeometry( newBranch.curve, 500, 5, 8, false );
 
         let material = new THREE.MeshPhongMaterial( {
-            color: 0x156289,
-            emissive: 0x072534,
+            color: 0xffffff,
+            emissive: 0xa72534,
             side: THREE.DoubleSide,
-            flatShading: true
+            flatShading: false
         } );
-
 
         let mesh = new THREE.Mesh( geometry, material );
         branchGroup.add(mesh);
 
-
-
-
-        // let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
-        // let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
-        // newLine.name = newBranch.name;
-        //
-        // branchGroup.add(newLine);
-
-        //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
         if (branches.length > NUM_BRANCHES) {
-            //branches.shift().name;
             branchGroup.children.shift();
-
-            //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
         }
     //}
 }
