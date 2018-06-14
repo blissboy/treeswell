@@ -1,30 +1,19 @@
 "use strict";
 
-const NUM_BRANCHES = 90;
+const NUM_BRANCHES = 200;
+const NUM_FADING_BRANCHES = 200;
 const MAX_TREE_HEIGHT = 12000;
 const SPREAD = 990;
 const Z_STEP = 100;
-const BRANCH_GROUP = "branchGroup";
-const BRANCH_MATERIAL = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.8
-});
-
-
-
 
 var branchNumber = 0;
-var branches = [];
 var branchGroup;
+var fadingGroup;
+var rotate = false;
 
-
-const ambient_light_name = 'ambientLight';
 var scene, camera, renderer, cameraControls;
 var renderCount = 0;
 var gui;
-
-var mesh;
 
 
 var values = {
@@ -157,31 +146,35 @@ var values = {
 };
 
 var render = function () {
-    renderCount++;
     requestAnimationFrame(render);
+    if ( rotate ) {
+        scene.rotation.x += 0.005;
+        scene.rotation.y += 0.005;
+        scene.rotation.z += 0.005;
+    }
     updateScene();
     renderer.render(scene, camera);
 };
+
 
 function newInit() {
     gui = new dat.GUI();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
-    //camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.x = MAX_TREE_HEIGHT * .66;
+    camera.position.y = MAX_TREE_HEIGHT;
     camera.position.z = MAX_TREE_HEIGHT / 2;
-    camera.position.y = 0
-    camera.position.x = MAX_TREE_HEIGHT;
-    camera.lookAt(0,MAX_TREE_HEIGHT/2,0);
+    camera.lookAt(0, MAX_TREE_HEIGHT / 2, MAX_TREE_HEIGHT);
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 1);
+    renderer.setClearColor(0xffffff, 1);
     document.body.appendChild(renderer.domElement);
 
     cameraControls = new THREE.OrbitControls(camera, renderer.domElement);
-    cameraControls.maxAzimuthAngle = Math.PI/2;
-    cameraControls.maxPolarAngle = Math.PI/2;
+    cameraControls.maxAzimuthAngle = Math.PI / 2;
+    cameraControls.maxPolarAngle = Math.PI / 2;
 
     //orbit.enableZoom = false;
 
@@ -198,27 +191,11 @@ function newInit() {
     scene.add(lights[1]);
     scene.add(lights[2]);
 
-    //mesh = new THREE.Object3D();
-
-    //createTree();
-    //drawPlane();
-    drawNormalToXZ(1000);
+    fadingGroup = new THREE.Group();
+    scene.add(fadingGroup);
 
     branchGroup = new THREE.Group();
-    freshenBranches();
     scene.add(branchGroup);
-
-    var prevFog = false;
-
-    var render = function () {
-        requestAnimationFrame(render);
-        if ( ! options.fixed ) {
-            mesh.rotation.x += 0.005;
-            mesh.rotation.y += 0.005;
-        }
-        updateScene();
-        renderer.render(scene, camera);
-    };
 
     window.addEventListener('resize', function () {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -226,23 +203,6 @@ function newInit() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     }, false);
 
-}
-
-function drawPlane() {
-    var geometry = new THREE.PlaneGeometry( 2500, 2500, 32, 32 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
-    var plane = new THREE.Mesh( geometry, material );
-    scene.add( plane );
-}
-
-function drawNormalToXZ(length) {
-
-    let normalCurve = new THREE.LineCurve3( new THREE.Vector3(0,0,0), new THREE.Vector3(0,length,0));
-
-    let geometry = new THREE.TubeGeometry( normalCurve, 20, 2, 8, false );
-    let material = new THREE.MeshBasicMaterial( { color: 0xFFff00 } );
-    let normalMesh = new THREE.Mesh( geometry, material );
-    scene.add( normalMesh );
 }
 
 function createBranch(treeHeight, spread, yStep) {
@@ -269,85 +229,77 @@ function createCurveFromPoints(curve) {
     return new THREE.CatmullRomCurve3(curve); //, false, 'chordal', 0.5);
 }
 
+function freshenBranches() {
+    let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
-function createTree() {
+    branchGroup.add(new THREE.Mesh(
+        new THREE.TubeBufferGeometry(newBranch.curve, 300, 5, 8, false),
+        newBranchMaterial())
+    );
 
-    //const MAX_TREE_SIZE = 1200;
-    //const WANDER = 25;
-    //const Z_STEP = 10;
-    //const NUM_BRANCHES = 10;
-
-    //let material = new THREE.MeshPhongMaterial({color: values.tubes.static.color, specular: 0xffffff});
-    let material = new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.5
-    });
-
-
-    let treeGroup = new THREE.Group();
-    treeGroup.name = BRANCH_GROUP;
-
-    let branch;
-    while (branches.length < NUM_BRANCHES) {
-
-        branch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
-        branches.push(branch);
-
-        let branchGeometry = new THREE.BufferGeometry().setFromPoints(branch.curve.getPoints(200));
-        //treeGroup.add(new THREE.Line(branchGeometry, material));
-        treeGroup.add(new THREE.Mesh(branchGeometry, material));
-
-        // treeGroup.add(new THREE.Mesh(
-        //     new THREE.BufferGeometry.setFromPoints(branch.getPoints()) //(branch, points.length, 150, 25, false),
-        //     material
-        // ));
-
+    if (branchGroup.children.length > NUM_BRANCHES) {
+        let woof = branchGroup.children.shift();
+        newFadingBranch(woof);
     }
-
-    scene.add(treeGroup);
 
 }
 
-function freshenBranches() {
-    //if ( branches.length == 0) {
-        let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
-        branches.push(newBranch);
+function newFadingBranch(branch) {
+    branch.material = newFadingMaterial();
+    fadingGroup.add(branch);
+}
 
-        let geometry = new THREE.TubeBufferGeometry( newBranch.curve, 500, 5, 8, false );
+function pruneBranches() {
+    updateGrowingBranches();
+    updateFadingBranches();
+}
 
-        let material = new THREE.MeshPhongMaterial( {
-            color: 0x156289,
-            emissive: 0x072534,
-            side: THREE.DoubleSide,
-            flatShading: true
-        } );
-
-
-        let mesh = new THREE.Mesh( geometry, material );
-        branchGroup.add(mesh);
+function updateGrowingBranches(){
+    updateBranchGroupOpacity(branchGroup, (index) => (NUM_BRANCHES - index) / NUM_BRANCHES);
+}
 
 
-
-
-        // let branchGeometry = new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200));
-        // let newLine = new THREE.Line(branchGeometry, BRANCH_MATERIAL);
-        // newLine.name = newBranch.name;
-        //
-        // branchGroup.add(newLine);
-
-        //branchGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(newBranch.curve.getPoints(200))), BRANCH_MATERIAL);
-        if (branches.length > NUM_BRANCHES) {
-            //branches.shift().name;
-            branchGroup.children.shift();
-
-            //scene.remove(branches.shift().name); //getObjectByName(BRANCH_GROUP).remove  branches.shift();
+function updateFadingBranches() {
+    if (fadingGroup && fadingGroup.children) {
+        while (fadingGroup.children.length > NUM_FADING_BRANCHES) {
+            fadingGroup.children.shift();
         }
-    //}
+        updateBranchGroupOpacity(fadingGroup, (index) => index / NUM_FADING_BRANCHES);
+    }
+}
+
+function updateBranchGroupOpacity(group, opacityFunction) {
+    group.children.forEach((branch, index) => {
+        branch.material.opacity = opacityFunction(index);
+    });
+
+}
+
+function newFadingMaterial() {
+    return new THREE.MeshPhongMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        side: THREE.DoubleSide,
+        flatShading: true,
+        opacity: 1.0,
+        transparent: true
+    });
+}
+
+function newBranchMaterial() {
+    return new THREE.MeshPhongMaterial({
+        color: 0x00ff00,
+        emissive: 0x00ff00,
+        side: THREE.DoubleSide,
+        flatShading: true,
+        opacity: 0.0,
+        transparent: true
+    });
 }
 
 function updateScene() {
     freshenBranches();
+    pruneBranches();
     //updateGeometries();
     //updateLighting();
     //updateCamera();
