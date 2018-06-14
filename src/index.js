@@ -1,4 +1,7 @@
 "use strict";
+var THREE = require('THREE');
+var OrbitControls = require('three-orbit-controls')(THREE);
+var dat = require("dat.gui");
 
 const NUM_BRANCHES = 200;
 const NUM_FADING_BRANCHES = 200;
@@ -14,6 +17,9 @@ var rotate = false;
 var scene, camera, renderer, cameraControls;
 var renderCount = 0;
 var gui;
+
+newInit();
+render();
 
 
 var values = {
@@ -145,7 +151,7 @@ var values = {
 
 };
 
-var render = function () {
+function render () {
     requestAnimationFrame(render);
     if ( rotate ) {
         scene.rotation.x += 0.005;
@@ -172,7 +178,7 @@ function newInit() {
     renderer.setClearColor(0xffffff, 1);
     document.body.appendChild(renderer.domElement);
 
-    cameraControls = new THREE.OrbitControls(camera, renderer.domElement);
+    cameraControls = new OrbitControls(camera, renderer.domElement);
     cameraControls.maxAzimuthAngle = Math.PI / 2;
     cameraControls.maxPolarAngle = Math.PI / 2;
 
