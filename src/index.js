@@ -5,9 +5,13 @@ var dat = require("dat.gui");
 
 const NUM_BRANCHES = 200;
 const NUM_FADING_BRANCHES = 200;
-const MAX_TREE_HEIGHT = 12000;
-const SPREAD = 990;
+const MAX_TREE_HEIGHT = 63000;
+const SPREAD = 20000;
 const Z_STEP = 100;
+const START_COLOR = 0x63ff20;
+const MID_COLOR = 0x12ad2a;
+const FINAL_COLOR = 0xD57500;
+
 
 var branchNumber = 0;
 var branchGroup;
@@ -151,9 +155,9 @@ var values = {
 
 };
 
-function render () {
+function render() {
     requestAnimationFrame(render);
-    if ( rotate ) {
+    if (rotate) {
         scene.rotation.x += 0.005;
         scene.rotation.y += 0.005;
         scene.rotation.z += 0.005;
@@ -239,7 +243,7 @@ function freshenBranches() {
     let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
     branchGroup.add(new THREE.Mesh(
-        new THREE.TubeBufferGeometry(newBranch.curve, 300, 5, 8, false),
+        new THREE.TubeBufferGeometry(newBranch.curve, 300, 50, 8, false),
         newBranchMaterial())
     );
 
@@ -260,8 +264,11 @@ function pruneBranches() {
     updateFadingBranches();
 }
 
-function updateGrowingBranches(){
-    updateBranchGroupOpacity(branchGroup, (index) => (NUM_BRANCHES - index) / NUM_BRANCHES);
+function updateGrowingBranches() {
+    updateBranchGroupMaterial(
+        branchGroup,
+        (material, index) => material.opacity = (NUM_BRANCHES - index) / NUM_BRANCHES
+    );
 }
 
 
@@ -270,13 +277,22 @@ function updateFadingBranches() {
         while (fadingGroup.children.length > NUM_FADING_BRANCHES) {
             fadingGroup.children.shift();
         }
-        updateBranchGroupOpacity(fadingGroup, (index) => index / NUM_FADING_BRANCHES);
+        updateBranchGroupMaterial(
+            fadingGroup,
+            (material, index) => {
+                material.opacity = index.map(0,NUM_FADING_BRANCHES,0.0,1.0);  //index / NUM_FADING_BRANCHES;
+            }
+        );
     }
 }
 
-function updateBranchGroupOpacity(group, opacityFunction) {
+function updateBranchGroupMaterial(group, materialUpdateFunction) {
     group.children.forEach((branch, index) => {
-        branch.material.opacity = opacityFunction(index);
+
+        materialUpdateFunction(branch.material, index);
+
+
+        //branch.material.opacity = opacityFunction(index);
     });
 
 }
@@ -284,7 +300,7 @@ function updateBranchGroupOpacity(group, opacityFunction) {
 function newFadingMaterial() {
     return new THREE.MeshPhongMaterial({
         color: 0xff0000,
-        emissive: 0xff0000,
+        emissive: 0x000000,
         side: THREE.DoubleSide,
         flatShading: true,
         opacity: 1.0,
@@ -295,7 +311,7 @@ function newFadingMaterial() {
 function newBranchMaterial() {
     return new THREE.MeshPhongMaterial({
         color: 0x00ff00,
-        emissive: 0x00ff00,
+        emissive: 0x000000,
         side: THREE.DoubleSide,
         flatShading: true,
         opacity: 0.0,
@@ -312,3 +328,9 @@ function updateScene() {
     //processFadeouts();
 }
 
+// function mapNumber(number, inMin, inMax, outMin, outMax) {
+//     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+// }
+Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+    return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
