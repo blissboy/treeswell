@@ -3,14 +3,16 @@ var THREE = require('THREE');
 var OrbitControls = require('three-orbit-controls')(THREE);
 var dat = require("dat.gui");
 
-const NUM_BRANCHES = 200;
-const NUM_FADING_BRANCHES = 200;
+const NUM_BRANCHES = 50;
+const NUM_FADING_BRANCHES = 50;
 const MAX_TREE_HEIGHT = 63000;
+const NUM_POINTS_ON_BRANCH = 500;
 const SPREAD = 20000;
-const Z_STEP = 100;
+const Z_STEP = 300;
 const START_COLOR = 0x63ff20;
 const MID_COLOR = 0x12ad2a;
 const FINAL_COLOR = 0xD57500;
+const FRAMERATE = 20;
 
 
 var branchNumber = 0;
@@ -22,8 +24,14 @@ var scene, camera, renderer, cameraControls;
 var renderCount = 0;
 var gui;
 
+var framecount = 0;
+
+Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+    return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 newInit();
-render();
+animate();
 
 
 var values = {
@@ -155,16 +163,19 @@ var values = {
 
 };
 
-function render() {
-    requestAnimationFrame(render);
-    if (rotate) {
-        scene.rotation.x += 0.005;
-        scene.rotation.y += 0.005;
-        scene.rotation.z += 0.005;
-    }
-    updateScene();
-    renderer.render(scene, camera);
-};
+
+function animate() {
+    // setTimeout( function() {
+        requestAnimationFrame(animate);
+        if (rotate) {
+            scene.rotation.x += 0.005;
+            scene.rotation.y += 0.005;
+            scene.rotation.z += 0.005;
+        }
+        updateScene();
+        renderer.render(scene, camera);
+    // }, 1000 / FRAMERATE );
+}
 
 
 function newInit() {
@@ -179,7 +190,7 @@ function newInit() {
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0xffffff, 1);
+    renderer.setClearColor(0x000000, 1);
     document.body.appendChild(renderer.domElement);
 
     cameraControls = new OrbitControls(camera, renderer.domElement);
@@ -192,16 +203,23 @@ function newInit() {
     lights[0] = new THREE.PointLight(0xffffff, 1, 0);
     lights[1] = new THREE.PointLight(0xffffff, 1, 0);
     lights[2] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[3] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[4] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[5] = new THREE.PointLight(0xffffff, 1, 0);
 
-    lights[0].position.set(0, 2000, 0);
-    lights[1].position.set(1000, 2000, 1000);
-    lights[2].position.set(-1000, -2000, -1000);
+    lights[0].position.set(0, MAX_TREE_HEIGHT, 0);
+    lights[1].position.set(MAX_TREE_HEIGHT, 0, 0);
+    lights[2].position.set(0, 0, -1 * MAX_TREE_HEIGHT);
+    lights[3].position.set(0, -1 * MAX_TREE_HEIGHT, 0);
+    lights[4].position.set(-1 * MAX_TREE_HEIGHT, 0, 0);
+    lights[5].position.set(0, 0, -1 * MAX_TREE_HEIGHT);
 
     scene.add(lights[0]);
     scene.add(lights[1]);
     scene.add(lights[2]);
 
     fadingGroup = new THREE.Group();
+    fadingGroup.name='fadingGroup';
     scene.add(fadingGroup);
 
     branchGroup = new THREE.Group();
@@ -243,13 +261,12 @@ function freshenBranches() {
     let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
     branchGroup.add(new THREE.Mesh(
-        new THREE.TubeBufferGeometry(newBranch.curve, 300, 50, 8, false),
+        new THREE.TubeBufferGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, 50, 16, false),
         newBranchMaterial())
     );
 
     if (branchGroup.children.length > NUM_BRANCHES) {
-        let woof = branchGroup.children.shift();
-        newFadingBranch(woof);
+        newFadingBranch(branchGroup.children.shift());
     }
 
 }
@@ -265,10 +282,16 @@ function pruneBranches() {
 }
 
 function updateGrowingBranches() {
+
+
     updateBranchGroupMaterial(
         branchGroup,
-        (material, index) => material.opacity = (NUM_BRANCHES - index) / NUM_BRANCHES
+        (material, index) => {
+            material.opacity = index.map(0,NUM_BRANCHES,0.0,1.0);
+            material.color.setHex(index.map(0,NUM_BRANCHES,START_COLOR,MID_COLOR));
+        }
     );
+
 }
 
 
@@ -280,7 +303,8 @@ function updateFadingBranches() {
         updateBranchGroupMaterial(
             fadingGroup,
             (material, index) => {
-                material.opacity = index.map(0,NUM_FADING_BRANCHES,0.0,1.0);  //index / NUM_FADING_BRANCHES;
+                material.opacity = index.map(0,NUM_FADING_BRANCHES,0.0,1.0);
+                material.color.setHex(index.map(0,NUM_FADING_BRANCHES,MID_COLOR,FINAL_COLOR));
             }
         );
     }
@@ -302,7 +326,7 @@ function newFadingMaterial() {
         color: 0xff0000,
         emissive: 0x000000,
         side: THREE.DoubleSide,
-        flatShading: true,
+        flatShading: false,
         opacity: 1.0,
         transparent: true
     });
@@ -313,15 +337,17 @@ function newBranchMaterial() {
         color: 0x00ff00,
         emissive: 0x000000,
         side: THREE.DoubleSide,
-        flatShading: true,
+        flatShading: false,
         opacity: 0.0,
         transparent: true
     });
 }
 
 function updateScene() {
-    freshenBranches();
-    pruneBranches();
+    if ( framecount++ % FRAMERATE == 0) {
+        freshenBranches();
+        pruneBranches();
+    }
     //updateGeometries();
     //updateLighting();
     //updateCamera();
@@ -331,6 +357,3 @@ function updateScene() {
 // function mapNumber(number, inMin, inMax, outMin, outMax) {
 //     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 // }
-Number.prototype.map = function (in_min, in_max, out_min, out_max) {
-    return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
