@@ -19,6 +19,7 @@ var branchNumber = 0;
 var branchGroup;
 var fadingGroup;
 var rotate = false;
+var getImageData = false;
 
 var scene, camera, renderer, cameraControls;
 var renderCount = 0;
@@ -166,16 +167,45 @@ var values = {
 
 function animate() {
     // setTimeout( function() {
-        requestAnimationFrame(animate);
-        if (rotate) {
-            scene.rotation.x += 0.005;
-            scene.rotation.y += 0.005;
-            scene.rotation.z += 0.005;
-        }
-        updateScene();
-        renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    if (rotate) {
+        scene.rotation.x += 0.005;
+        scene.rotation.y += 0.005;
+        scene.rotation.z += 0.005;
+    }
+    updateScene();
+    renderer.render(scene, camera);
+
+    // if (getImageData == true) {
+    //     imgData = renderer.domElement.toDataURL();
+    //     getImageData = false;
+    // }
+
+
     // }, 1000 / FRAMERATE );
 }
+
+window.addEventListener("keyup", function (e) {
+    var imgData, imgNode;
+    //Listen to 'P' key
+    if (e.which !== 80) return;
+    try {
+        imgData = renderer.domElement.toDataURL();
+        let image = new Image();
+        image.src = imgData;
+
+        let w = window.open("data:image/jpg;base64," + imgData);
+        w.document.write(image.outerHTML);
+
+
+    } catch (e) {
+        console.log("Browser does not support taking screenshot of 3d context");
+        return;
+    }
+    imgNode = document.createElement("img");
+    imgNode.src = imgData;
+    document.body.appendChild(imgNode);
+});
 
 
 function newInit() {
@@ -187,7 +217,7 @@ function newInit() {
     camera.position.z = MAX_TREE_HEIGHT / 2;
     camera.lookAt(0, MAX_TREE_HEIGHT / 2, MAX_TREE_HEIGHT);
 
-    renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer = new THREE.WebGLRenderer({antialias: true,         preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 1);
@@ -219,7 +249,7 @@ function newInit() {
     scene.add(lights[2]);
 
     fadingGroup = new THREE.Group();
-    fadingGroup.name='fadingGroup';
+    fadingGroup.name = 'fadingGroup';
     scene.add(fadingGroup);
 
     branchGroup = new THREE.Group();
@@ -287,8 +317,8 @@ function updateGrowingBranches() {
     updateBranchGroupMaterial(
         branchGroup,
         (material, index) => {
-            material.opacity = index.map(0,NUM_BRANCHES,0.0,1.0);
-            material.color.setHex(index.map(0,NUM_BRANCHES,START_COLOR,MID_COLOR));
+            material.opacity = index.map(0, NUM_BRANCHES, 0.0, 1.0);
+            material.color.setHex(index.map(0, NUM_BRANCHES, START_COLOR, MID_COLOR));
         }
     );
 
@@ -303,8 +333,8 @@ function updateFadingBranches() {
         updateBranchGroupMaterial(
             fadingGroup,
             (material, index) => {
-                material.opacity = index.map(0,NUM_FADING_BRANCHES,0.0,1.0);
-                material.color.setHex(index.map(0,NUM_FADING_BRANCHES,MID_COLOR,FINAL_COLOR));
+                material.opacity = index.map(0, NUM_FADING_BRANCHES, 0.0, 1.0);
+                material.color.setHex(index.map(0, NUM_FADING_BRANCHES, MID_COLOR, FINAL_COLOR));
             }
         );
     }
@@ -344,7 +374,7 @@ function newBranchMaterial() {
 }
 
 function updateScene() {
-    if ( framecount++ % FRAMERATE == 0) {
+    if (framecount++ % FRAMERATE == 0) {
         freshenBranches();
         pruneBranches();
     }
