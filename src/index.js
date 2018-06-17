@@ -5,21 +5,23 @@ var dat = require("dat.gui");
 
 const NUM_BRANCHES = 50;
 const NUM_FADING_BRANCHES = 50;
+const GROWTH_STEPS = 200;
+const FADING_STEPS = 200;
 const MAX_TREE_HEIGHT = 63000;
 const NUM_POINTS_ON_BRANCH = 500;
-const SPREAD = 20000;
+const SPREAD = 2000;
 const Z_STEP = 300;
-const START_COLOR = 0x63ff20;
-const MID_COLOR = 0x12ad2a;
-const FINAL_COLOR = 0xD57500;
-const FRAMERATE = 20;
+const START_COLOR = new THREE.Color( 0x63ff20 );
+//const MID_COLOR2 = new THREE.Color(0x12ad2a);
+const MID_COLOR = new THREE.Color(0x394510);
+const FINAL_COLOR = new THREE.Color(0xD57500);
+const FRAMERATE = 5;
 
 
 var branchNumber = 0;
 var branchGroup;
 var fadingGroup;
 var rotate = false;
-var getImageData = false;
 
 var scene, camera, renderer, cameraControls;
 var renderCount = 0;
@@ -185,27 +187,6 @@ function animate() {
     // }, 1000 / FRAMERATE );
 }
 
-window.addEventListener("keyup", function (e) {
-    var imgData, imgNode;
-    //Listen to 'P' key
-    if (e.which !== 80) return;
-    try {
-        imgData = renderer.domElement.toDataURL();
-        let image = new Image();
-        image.src = imgData;
-
-        let w = window.open("data:image/jpg;base64," + imgData);
-        w.document.write(image.outerHTML);
-
-
-    } catch (e) {
-        console.log("Browser does not support taking screenshot of 3d context");
-        return;
-    }
-    imgNode = document.createElement("img");
-    imgNode.src = imgData;
-    document.body.appendChild(imgNode);
-});
 
 
 function newInit() {
@@ -261,6 +242,25 @@ function newInit() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     }, false);
 
+    window.addEventListener("keyup", function (e) {
+        var imgData, imgNode;
+        //Listen to 'P' key
+        if (e.which !== 80) return;
+        try {
+            imgData = renderer.domElement.toDataURL();
+            let image = new Image();
+            image.src = imgData;
+
+            let w = window.open("data:image/jpg;base64," + imgData);
+            w.document.write(image.outerHTML);
+        } catch (e) {
+            console.log("Browser does not support taking screenshot of 3d context");
+            return;
+        }
+        imgNode = document.createElement("img");
+        imgNode.src = imgData;
+        document.body.appendChild(imgNode);
+    });
 }
 
 function createBranch(treeHeight, spread, yStep) {
@@ -288,17 +288,14 @@ function createCurveFromPoints(curve) {
 }
 
 function freshenBranches() {
-    let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+    if ( branchGroup.children.length < NUM_BRANCHES ) {
+        let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
-    branchGroup.add(new THREE.Mesh(
-        new THREE.TubeBufferGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, 50, 16, false),
-        newBranchMaterial())
-    );
-
-    if (branchGroup.children.length > NUM_BRANCHES) {
-        newFadingBranch(branchGroup.children.shift());
+        branchGroup.add(new THREE.Mesh(
+            new THREE.TubeBufferGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, 50, 16, false),
+            newBranchMaterial())
+        );
     }
-
 }
 
 function newFadingBranch(branch) {
@@ -312,18 +309,20 @@ function pruneBranches() {
 }
 
 function updateGrowingBranches() {
-
-
     updateBranchGroupMaterial(
         branchGroup,
         (material, index) => {
-            material.opacity = index.map(0, NUM_BRANCHES, 0.0, 1.0);
-            material.color.setHex(index.map(0, NUM_BRANCHES, START_COLOR, MID_COLOR));
+            material.opacity = material.userData.frames.map(0, GROWTH_STEPS, 0.0, 1.0);
+            material.color.r = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.r,  MID_COLOR.r));
+            material.color.g = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.g,  MID_COLOR.g));
+            material.color.b = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.b,  MID_COLOR.b));
+            material.userData.frames = material.userData.frames + 1;
         }
     );
 
+    branchGroup.children.filter((branch) => branch.material.userData.frames > GROWTH_STEPS)
+        .forEach( (branch) => newFadingBranch(branchGroup.children.shift()));
 }
-
 
 function updateFadingBranches() {
     if (fadingGroup && fadingGroup.children) {
@@ -333,8 +332,12 @@ function updateFadingBranches() {
         updateBranchGroupMaterial(
             fadingGroup,
             (material, index) => {
-                material.opacity = index.map(0, NUM_FADING_BRANCHES, 0.0, 1.0);
-                material.color.setHex(index.map(0, NUM_FADING_BRANCHES, MID_COLOR, FINAL_COLOR));
+                material.opacity = material.userData.frames.map(0, FADING_STEPS, 1.0, 0.0);
+                //material.opacity = 1.0;
+                material.color.r = (material.userData.frames.map(0, FADING_STEPS, MID_COLOR.r, FINAL_COLOR.r));
+                material.color.g = (material.userData.frames.map(0, FADING_STEPS, MID_COLOR.g, FINAL_COLOR.g));
+                material.color.b = (material.userData.frames.map(0, FADING_STEPS, MID_COLOR.b, FINAL_COLOR.b));
+                material.userData.frames = material.userData.frames + 1;
             }
         );
     }
@@ -342,13 +345,8 @@ function updateFadingBranches() {
 
 function updateBranchGroupMaterial(group, materialUpdateFunction) {
     group.children.forEach((branch, index) => {
-
         materialUpdateFunction(branch.material, index);
-
-
-        //branch.material.opacity = opacityFunction(index);
     });
-
 }
 
 function newFadingMaterial() {
@@ -358,7 +356,10 @@ function newFadingMaterial() {
         side: THREE.DoubleSide,
         flatShading: false,
         opacity: 1.0,
-        transparent: true
+        transparent: true,
+        userData: {
+            frames: 0
+        }
     });
 }
 
@@ -369,7 +370,10 @@ function newBranchMaterial() {
         side: THREE.DoubleSide,
         flatShading: false,
         opacity: 0.0,
-        transparent: true
+        transparent: true,
+        userData: {
+            frames: 0
+        }
     });
 }
 
