@@ -6,13 +6,12 @@ var dat = require("dat.gui");
 const NUM_BRANCHES = 50;
 const NUM_FADING_BRANCHES = 50;
 const GROWTH_STEPS = 200;
-const FADING_STEPS = 200;
+const FADING_STEPS = 600;
 const MAX_TREE_HEIGHT = 63000;
 const NUM_POINTS_ON_BRANCH = 500;
 const SPREAD = 2000;
 const Z_STEP = 300;
 const START_COLOR = new THREE.Color( 0x63ff20 );
-//const MID_COLOR2 = new THREE.Color(0x12ad2a);
 const MID_COLOR = new THREE.Color(0x394510);
 const FINAL_COLOR = new THREE.Color(0xD57500);
 const FRAMERATE = 5;
@@ -312,7 +311,7 @@ function updateGrowingBranches() {
     updateBranchGroupMaterial(
         branchGroup,
         (material, index) => {
-            material.opacity = material.userData.frames.map(0, GROWTH_STEPS, 0.0, 1.0);
+            material.opacity = doubleCircleSigmoid(material.userData.frames.map(0, GROWTH_STEPS, 0.0, 1.0), .63);
             material.color.r = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.r,  MID_COLOR.r));
             material.color.g = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.g,  MID_COLOR.g));
             material.color.b = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.b,  MID_COLOR.b));
@@ -326,12 +325,13 @@ function updateGrowingBranches() {
 
 function updateFadingBranches() {
     if (fadingGroup && fadingGroup.children) {
-        while (fadingGroup.children.length > NUM_FADING_BRANCHES) {
-            fadingGroup.children.shift();
-        }
+        // while (fadingGroup.children.length > NUM_FADING_BRANCHES) {
+        //     fadingGroup.children.shift();
+        // }
         updateBranchGroupMaterial(
             fadingGroup,
             (material, index) => {
+
                 material.opacity = material.userData.frames.map(0, FADING_STEPS, 1.0, 0.0);
                 //material.opacity = 1.0;
                 material.color.r = (material.userData.frames.map(0, FADING_STEPS, MID_COLOR.r, FINAL_COLOR.r));
@@ -388,6 +388,11 @@ function updateScene() {
     //processFadeouts();
 }
 
-// function mapNumber(number, inMin, inMax, outMin, outMax) {
-//     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-// }
+function doubleCircleSigmoid (x, a){ // see http://www.flong.com/texts/code/shapers_circ/
+
+    if (x<=a){
+        return  a - Math.sqrt(a*a - x*x);
+    } else {
+        return a + Math.sqrt( (1-a) * (1-a) - (x-1) * (x-1));
+    }
+}
