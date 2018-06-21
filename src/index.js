@@ -3,7 +3,7 @@ var THREE = require('THREE');
 var OrbitControls = require('three-orbit-controls')(THREE);
 var dat = require("dat.gui");
 
-const NUM_BRANCHES = 20;
+const NUM_BRANCHES = 10;
 const GROWTH_STEPS = 200;
 const FADING_STEPS = 600;
 const MAX_TREE_HEIGHT = 63000;
@@ -209,7 +209,18 @@ function updateFadingBranches() {
                 if (material.userData.frames > FADING_STEPS) {
                     removeList.push(index);
                     material.dispose();
+                } else if (material.userData.frames % 24 === 0) {
+                    let currentGeom = mesh.geometry;
+                    mesh.geometry = new THREE.TubeBufferGeometry(
+                        currentGeom.parameters.path,
+                        Math.trunc(material.userData.frames.map(0, FADING_STEPS, NUM_POINTS_ON_BRANCH, NUM_POINTS_ON_BRANCH / 2)),
+                        material.userData.frames.map(0, FADING_STEPS, TUBE_RADIUS, 1),
+                        16,
+                        false);
+                    currentGeom.dispose();
+
                 }
+
 
                 //mesh.scale.z = 1- (material.userData.frames / FADING_STEPS);
                 //mesh.scale.y = 1 - material.userData.frames / FADING_STEPS;
@@ -223,7 +234,11 @@ function updateFadingBranches() {
         );
 
         removeList = removeList.reverse();
-        removeList.forEach((index) => fadingGroup.children.splice(index, 1));
+        removeList.forEach((index) => {
+            fadingGroup.children[index].material.dispose();
+            fadingGroup.children[index].geometry.dispose();
+            fadingGroup.children.splice(index, 1);
+        });
     }
 }
 
