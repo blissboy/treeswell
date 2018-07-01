@@ -128,7 +128,29 @@ function newInit() {
     });
 }
 
-function createBranch(treeHeight, spread, yStep) {
+function createTree(treeHeight, spread, yStep) {
+    // start from zero
+
+    // create points. At each point, decide if we split. 
+    // If so, then that ends this curve, create the mesh and add,
+    //       and we start two more curves (start from point w/ unit vector for direction)
+    // If not, keep going. 
+
+    // on split, deviate from vector represented by last two points of branch
+    // at an angle of minSplitDeviation < deviation < maxSplitDeviation
+
+
+    // go up by steps, if past stump height && split function && 
+}
+
+function createBranch(startPoint, directionVector, stepSize, shouldSplitFn, maxPoints) {
+    let numPoints = 0;
+}
+
+
+
+
+function createBranchCurve(treeHeight, spread, yStep) {
     let x = 0, y = 0, z = 0, unity;
     let points = [];
     while (y < treeHeight) {
@@ -154,7 +176,7 @@ function createCurveFromPoints(curve) {
 
 function freshenBranches() {
     if (branchGroup.children.length < NUM_BRANCHES) {
-        let newBranch = createBranch(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+        let newBranch = createBranchCurve(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
         branchGroup.add(new THREE.Mesh(
             new THREE.TubeBufferGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, TUBE_RADIUS, 16, false),
