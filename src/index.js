@@ -1,6 +1,7 @@
 "use strict";
 var THREE = require('THREE');
 var OrbitControls = require('three-orbit-controls')(THREE);
+var TreeModel = require('tree-model');
 var dat = require("dat.gui");
 
 const NUM_BRANCHES = 10;
@@ -28,6 +29,8 @@ var renderCount = 0;
 var gui;
 
 var framecount = 0;
+
+var tree;
 
 Number.prototype.map = function (in_min, in_max, out_min, out_max) {
     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -129,7 +132,24 @@ function newInit() {
 }
 
 function createTree(treeHeight, spread, yStep) {
-    // start from zero
+    // start from zero (root node)
+
+    tree = new TreeModel();
+    let nodeId = 0;
+    let stump = tree.parse({
+        name: nodeId++,
+        points: [
+            new THREE.Vector3(0,0,0),
+            new THREE.Vector3(0,STUMP_HEIGHT,0)]
+    });
+
+    let keepGrowing = true;
+    let branchesToSplit = [stump];
+    while ( keepGrowing ) {
+        branchesToSplit = splitBranches(branchesToSplit);
+        keepGrowing = shouldKeepGoing(branchesToSplit);
+    }
+
 
     // create points. At each point, decide if we split. 
     // If so, then that ends this curve, create the mesh and add,
@@ -142,6 +162,21 @@ function createTree(treeHeight, spread, yStep) {
 
     // go up by steps, if past stump height && split function && 
 }
+
+function splitBranches(branchesToSplit) {
+    let newBranches = [];
+
+    branchesToSplit.forEach( branch => {
+        let splitPoint = getBranchDirectionAndEnd(branch);
+        let splitDeltas = getSplitDeltas(splitPoint);
+        splitDeltas.forEach( (delta) => {
+           newBranches.push(addBranch(splitPoint.location, splitPoint.normal + delta, branch));
+        });
+    });
+
+    return newBranches;
+}
+
 
 function createBranch(startPoint, directionVector, stepSize, shouldSplitFn, maxPoints) {
     let numPoints = 0;

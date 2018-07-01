@@ -6,7 +6,8 @@
   "dependencies": {
     "dat.gui": "^0.7.2",
     "three": "^0.92.0",
-    "three-orbit-controls": "^82.1.0"
+    "three-orbit-controls": "^82.1.0",
+    "tree-model": "^1.0.7"
   },
   "devDependencies": {
     "webpack": "^4.12.0",
