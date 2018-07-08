@@ -15,6 +15,8 @@ const START_COLOR = new THREE.Color(0x63ff20);
 const MID_COLOR = new THREE.Color(0x394510);
 const FINAL_COLOR = new THREE.Color(0xD57500);
 const FRAMERATE = 1;
+const SPLIT_ANGLE = (30 * Math.PI) / 180
+
 
 const TUBE_RADIUS = 50;
 
@@ -136,7 +138,7 @@ function createTree(treeHeight, spread, yStep) {
 
     tree = new TreeModel();
     let nodeId = 0;
-    let stump = tree.parse({
+    let trunkNode = tree.parse({
         name: nodeId++,
         points: [
             new THREE.Vector3(0,0,0),
@@ -144,11 +146,20 @@ function createTree(treeHeight, spread, yStep) {
     });
 
     let keepGrowing = true;
-    let branchesToSplit = [stump];
+    let branchNodesToSplit = [trunkNode];
     while ( keepGrowing ) {
-        branchesToSplit = splitBranches(branchesToSplit);
-        keepGrowing = shouldKeepGoing(branchesToSplit);
+        branchNodesToSplit = addForkBranchesToNodes(branchNodesToSplit);
+        keepGrowing = shouldKeepGoing(branchNodesToSplit);
     }
+
+
+    // THINGS to TRY:
+    // create tree w/ fixed # points per branch, then create curve for each path from root to leaf of tree
+    // create tree and then just connect curve through all pts
+    // create tree where branches split after two pts
+    // create tree w/ random walks on each branch
+    // a little bit harder
+
 
 
     // create points. At each point, decide if we split. 
@@ -163,14 +174,59 @@ function createTree(treeHeight, spread, yStep) {
     // go up by steps, if past stump height && split function && 
 }
 
-function splitBranches(branchesToSplit) {
+/**
+ * Returns the branch collar for the "next" branch, e.g., the branch that will be created
+ * starting at the point returned.
+ * @param branch
+ * @returns the branch collar (point and normal)
+ */
+function getBranchEndInfo(branch) {
+    return {
+        location: branch.value.points[branch.value.points.length - 1],
+        normal: new THREE.Vector3().subVectors(branch.value.points[branch.value.points.length - 1] - branch.value.points[branch.value.points.length - 2]).normalize()
+    };
+}
+
+/**
+ * Determines how a branch splits
+ * @param splitPoint
+ * @returns {undefined}
+ */
+function getNewBranchStarts(branch) {
+    let splitPoint = getBranchEndInfo(branch);
+
+    // this is the exact place where we decide how branches split
+
+    // have normal and startpoint
+
+    // get spherical coords of (startpoint + normal)
+    let sphCoordOfNormalEnd = THREE.Spherical.setFromVector3(branch.location + branch.normal);
+
+    let newStarts = [];
+    // add angle to pi / theta for this spherical coord
+    newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, SPLIT_ANGLE, SPLIT_ANGLE));
+    newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, -1.0 * SPLIT_ANGLE, SPLIT_ANGLE));
+    newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
+    newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, -1.0 * SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
+
+    return newStarts;
+
+}
+
+function getNewStart(startPoint, sphCoordOfNormalEnd, phiChange, thetaChange) {
+    return {
+        location: startPoint,
+        normal: new THREE.Spherical(sphCoordOfNormalEnd.radius, sphCoordOfNormalEnd.phi + phiChange, sphCoordOfNormalEnd.theta + thetaChange).toVector3()
+    };
+}
+
+
+function addForkBranchesToNodes(branchesToSplit) {
     let newBranches = [];
 
     branchesToSplit.forEach( branch => {
-        let splitPoint = getBranchDirectionAndEnd(branch);
-        let splitDeltas = getSplitDeltas(splitPoint);
-        splitDeltas.forEach( (delta) => {
-           newBranches.push(addBranch(splitPoint.location, splitPoint.normal + delta, branch));
+        getNewBranchStarts(branch).forEach( (branchStart) => {
+           newBranches.push(createBranch(branchStart, branch));
         });
     });
 
@@ -178,11 +234,26 @@ function splitBranches(branchesToSplit) {
 }
 
 
-function createBranch(startPoint, directionVector, stepSize, shouldSplitFn, maxPoints) {
-    let numPoints = 0;
+/**
+ * Creates a new branch beginning at origin, tending towards normal.
+ * @param branchStart the location and normal of the start of the branch
+ * @param branchThisComesFrom
+ */
+function createBranch(branchStart, branchThisComesFrom) {
+    let branchNode = tree.parse({
+        name: nodeId++,
+        points: [
+            branchStart.location,
+            branchStart.location + (branchStart.normal.mult( Math.random() * 1000))
+        ]
+    });
+
+    if ( branchThisComesFrom && branchThisComesFrom.addChild) {
+        branchThisComesFrom.addChild(branchNode);
+    }
+
+    return branchNode;
 }
-
-
 
 
 function createBranchCurve(treeHeight, spread, yStep) {
