@@ -15,11 +15,13 @@ const START_COLOR = new THREE.Color(0x63ff20);
 const MID_COLOR = new THREE.Color(0x394510);
 const FINAL_COLOR = new THREE.Color(0xD57500);
 const FRAMERATE = 1;
-const SPLIT_ANGLE = (30 * Math.PI) / 180
+const SPLIT_ANGLE = (30 * Math.PI) / 180;
+const STUMP_HEIGHT = 8000;
 
 
 const TUBE_RADIUS = 50;
 
+var nextTreeNodeId = 0;
 
 var branchNumber = 0;
 var branchGroup;
@@ -102,6 +104,9 @@ function newInit() {
     branchGroup = new THREE.Group();
     scene.add(branchGroup);
 
+    createTree(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+
+
     window.addEventListener('resize', function () {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -124,7 +129,7 @@ function newInit() {
             }
             imgNode = document.createElement("img");
             imgNode.src = imgData;
-            document.body.appendChild(imgNode);
+            document.body.append(imgNode);
         } else if (event.code == 'KeyR') {
             rotate = !rotate;
             cameraControls.autoRotate = rotate;
@@ -133,21 +138,32 @@ function newInit() {
     });
 }
 
+function shouldKeepGoing(branchNodesToSplit) {
+    let pointsRet = branchNodesToSplit.filter((branch) => {
+        console.log(branch.model.points);
+        let aboveZ = branch.model.points.filter((point) => {
+            console.log(point);
+            return point.z && point.z > MAX_TREE_HEIGHT;
+        });
+        return !aboveZ.isEmpty();
+    });
+    return !pointsRet.isEmpty();
+}
+
 function createTree(treeHeight, spread, yStep) {
     // start from zero (root node)
 
     tree = new TreeModel();
-    let nodeId = 0;
     let trunkNode = tree.parse({
-        name: nodeId++,
+        name: nextTreeNodeId++,
         points: [
-            new THREE.Vector3(0,0,0),
-            new THREE.Vector3(0,STUMP_HEIGHT,0)]
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, STUMP_HEIGHT, 0)]
     });
 
     let keepGrowing = true;
     let branchNodesToSplit = [trunkNode];
-    while ( keepGrowing ) {
+    while (keepGrowing) {
         branchNodesToSplit = addForkBranchesToNodes(branchNodesToSplit);
         keepGrowing = shouldKeepGoing(branchNodesToSplit);
     }
@@ -161,17 +177,16 @@ function createTree(treeHeight, spread, yStep) {
     // a little bit harder
 
 
-
-    // create points. At each point, decide if we split. 
+    // create points. At each point, decide if we split.
     // If so, then that ends this curve, create the mesh and add,
     //       and we start two more curves (start from point w/ unit vector for direction)
-    // If not, keep going. 
+    // If not, keep going.
 
     // on split, deviate from vector represented by last two points of branch
     // at an angle of minSplitDeviation < deviation < maxSplitDeviation
 
 
-    // go up by steps, if past stump height && split function && 
+    // go up by steps, if past stump height && split function &&
 }
 
 /**
@@ -181,9 +196,15 @@ function createTree(treeHeight, spread, yStep) {
  * @returns the branch collar (point and normal)
  */
 function getBranchEndInfo(branch) {
+    // let point1 = branch.model.points[branch.model.points.length - 1];
+    // let point2 = branch.model.points[branch.model.points.length - 2];
+    //
+    // let whatIsThis = new THREE.Vector3(point1.x - point2.x, point1.y - point2.y, point1.z - point2.z);
+    // console.log(whatIsThis);
+    //
     return {
-        location: branch.value.points[branch.value.points.length - 1],
-        normal: new THREE.Vector3().subVectors(branch.value.points[branch.value.points.length - 1] - branch.value.points[branch.value.points.length - 2]).normalize()
+        location: branch.model.points[branch.model.points.length - 1],
+        normal: new THREE.Vector3().subVectors(branch.model.points[branch.model.points.length - 1], branch.model.points[branch.model.points.length - 2]).normalize()
     };
 }
 
@@ -200,7 +221,11 @@ function getNewBranchStarts(branch) {
     // have normal and startpoint
 
     // get spherical coords of (startpoint + normal)
-    let sphCoordOfNormalEnd = THREE.Spherical.setFromVector3(branch.location + branch.normal);
+    let sphCoordOfNormalEnd = new THREE.Spherical().setFromVector3(new THREE.Vector3(
+        splitPoint.location.x + splitPoint.normal.x,
+        splitPoint.location.y + splitPoint.normal.y,
+        splitPoint.location.z + splitPoint.normal.z)
+    );
 
     let newStarts = [];
     // add angle to pi / theta for this spherical coord
@@ -216,7 +241,10 @@ function getNewBranchStarts(branch) {
 function getNewStart(startPoint, sphCoordOfNormalEnd, phiChange, thetaChange) {
     return {
         location: startPoint,
-        normal: new THREE.Spherical(sphCoordOfNormalEnd.radius, sphCoordOfNormalEnd.phi + phiChange, sphCoordOfNormalEnd.theta + thetaChange).toVector3()
+        normal: new THREE.Vector3().setFromSpherical(new THREE.Spherical(
+            sphCoordOfNormalEnd.radius,
+            sphCoordOfNormalEnd.phi + phiChange,
+            sphCoordOfNormalEnd.theta + thetaChange))
     };
 }
 
@@ -224,9 +252,9 @@ function getNewStart(startPoint, sphCoordOfNormalEnd, phiChange, thetaChange) {
 function addForkBranchesToNodes(branchesToSplit) {
     let newBranches = [];
 
-    branchesToSplit.forEach( branch => {
-        getNewBranchStarts(branch).forEach( (branchStart) => {
-           newBranches.push(createBranch(branchStart, branch));
+    branchesToSplit.forEach(branch => {
+        getNewBranchStarts(branch).forEach((branchStart) => {
+            newBranches.push(createBranch(branchStart, branch));
         });
     });
 
@@ -241,14 +269,14 @@ function addForkBranchesToNodes(branchesToSplit) {
  */
 function createBranch(branchStart, branchThisComesFrom) {
     let branchNode = tree.parse({
-        name: nodeId++,
+        name: nextTreeNodeId++,
         points: [
             branchStart.location,
-            branchStart.location + (branchStart.normal.mult( Math.random() * 1000))
+            branchStart.location + (branchStart.normal.multiplyScalar(Math.random() * 1000))
         ]
     });
 
-    if ( branchThisComesFrom && branchThisComesFrom.addChild) {
+    if (branchThisComesFrom && branchThisComesFrom.addChild) {
         branchThisComesFrom.addChild(branchNode);
     }
 
