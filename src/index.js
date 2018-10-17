@@ -140,14 +140,14 @@ function newInit() {
 
 function shouldKeepGoing(branchNodesToSplit) {
     let pointsRet = branchNodesToSplit.filter((branch) => {
-        console.log(branch.model.points);
+        //console.log(branch.model.points);
         let aboveZ = branch.model.points.filter((point) => {
-            console.log(point);
-            return point.z && point.z > MAX_TREE_HEIGHT;
+            //console.log(point);
+            return point && point.z && point.z > MAX_TREE_HEIGHT;
         });
-        return !aboveZ.isEmpty();
+        return !aboveZ.length;
     });
-    return !pointsRet.isEmpty();
+    return !pointsRet.length;
 }
 
 function createTree(treeHeight, spread, yStep) {
@@ -161,12 +161,20 @@ function createTree(treeHeight, spread, yStep) {
             new THREE.Vector3(0, STUMP_HEIGHT, 0)]
     });
 
+
+
     let keepGrowing = true;
     let branchNodesToSplit = [trunkNode];
     while (keepGrowing) {
         branchNodesToSplit = addForkBranchesToNodes(branchNodesToSplit);
         keepGrowing = shouldKeepGoing(branchNodesToSplit);
     }
+
+    // console.log(trunkNode);
+    //
+    // trunkNode.walk((node) => {
+    //    console.log(node);
+    // });
 
 
     // THINGS to TRY:
@@ -219,6 +227,7 @@ function getNewBranchStarts(branch) {
     // this is the exact place where we decide how branches split
 
     // have normal and startpoint
+    console.log(`Splitting from location: ${JSON.stringify(splitPoint.location)} with normal: ${JSON.stringify(splitPoint.normal)}`);
 
     // get spherical coords of (startpoint + normal)
     let sphCoordOfNormalEnd = new THREE.Spherical().setFromVector3(new THREE.Vector3(
@@ -233,6 +242,8 @@ function getNewBranchStarts(branch) {
     newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, -1.0 * SPLIT_ANGLE, SPLIT_ANGLE));
     newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
     newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, -1.0 * SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
+
+    console.log(`After splitting, new starts: ${newStarts.map(start=>JSON.stringify(start))} `);
 
     return newStarts;
 
