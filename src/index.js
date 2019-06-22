@@ -1,17 +1,6 @@
 "use strict";
 
 var midi = require('WebMidi');
-console.log('initializing midi');
-midi.enable( (err) => {
-    if ( err ) {
-        console.log("Could not midi", err);
-    } else {
-        console.log("enabled midi");
-        console.log('inputs' + midi.inputs);
-        console.log(`outputs: ${midi.outputs}`)
-
-    }
-});
 
 var THREE = require('THREE');
 var OrbitControls = require('three-orbit-controls')(THREE);
@@ -51,9 +40,6 @@ var framecount = 0;
 var tree;
 
 
-
-
-
 Number.prototype.map = function (in_min, in_max, out_min, out_max) {
     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -76,6 +62,7 @@ function newInit() {
     initCamera();
     initLights();
     initWindow();
+    initMidi();
 
     fadingGroup = new THREE.Group();
     fadingGroup.name = 'fadingGroup';
@@ -119,7 +106,6 @@ function initWindow() {
         }
     });
 }
-
 
 function initCamera() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
@@ -167,6 +153,30 @@ function initLights() {
     scene.add(lights[5]);
 }
 
+function initMidi() {
+    console.log('initializing midi');
+    midi.enable((err) => {
+        if (!err) {
+            console.log("enabled midi");
+            //console.log(`inputs: ${midi.inputs}`);
+            midi.inputs.forEach(input => console.log(`Found midi input ${input.name}`));
+            midi.inputs.forEach(input => {
+                input.addListener('noteon', 'all', midiHandler);
+                input.addListener('noteoff', 'all', midiHandler);
+                input.addListener('pitchbend', 'all', midiHandler);
+                input.addListener('controlchange', 'all', midiHandler);
+            });
+            console.log(`outputs: ${midi.outputs}`)
+        } else {
+            console.log("Could not midi", err);
+        }
+    });
+}
+
+function midiHandler(midiEvent) {
+    console.log(`midiEvent: ${midiEvent}`);
+}
+
 function shouldKeepGoing(branchNodesToSplit) {
     let pointsRet = branchNodesToSplit.filter((branch) => {
         //console.log(branch.model.points);
@@ -189,7 +199,6 @@ function createTree(treeHeight, spread, yStep) {
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, STUMP_HEIGHT, 0)]
     });
-
 
 
     let keepGrowing = true;
@@ -272,7 +281,7 @@ function getNewBranchStarts(branch) {
     newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
     newStarts.push(getNewStart(branch.location, sphCoordOfNormalEnd, -1.0 * SPLIT_ANGLE, -1.0 * SPLIT_ANGLE));
 
-    console.log(`After splitting, new starts: ${newStarts.map(start=>JSON.stringify(start))} `);
+    console.log(`After splitting, new starts: ${newStarts.map(start => JSON.stringify(start))} `);
 
     return newStarts;
 
