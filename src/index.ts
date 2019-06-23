@@ -1,8 +1,16 @@
-"use strict";
-var THREE = require('THREE');
-var OrbitControls = require('three-orbit-controls')(THREE);
-var TreeModel = require('tree-model');
-var dat = require("dat.gui");
+
+// @ts-ignore no idea why
+import {TreeModel,Node} from "tree-model";
+//import * as dat from 'dat-gui';
+// @ts-ignore
+var THREE: three  = require( 'three');
+var OrbitConrols = require ('three-orbit-controls')(THREE);
+
+console.log(`ORbing controls`, OrbitConrols);
+
+//const treeModel: TreeModel = new TreeModel();
+let treeModel: TreeModel;
+const dat =  require("dat.gui");
 
 const NUM_BRANCHES = 10;
 const GROWTH_STEPS = 200;
