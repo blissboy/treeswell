@@ -5,12 +5,13 @@
   "main": "index.js",
   "dependencies": {
     "dat.gui": "^0.7.2",
+    "live-server": "^1.2.1",
     "three": "^0.92.0",
     "three-orbit-controls": "^82.1.0",
     "tree-model": "^1.0.7"
   },
   "devDependencies": {
-    "webpack": "^4.12.0",
+    "webpack": "^4.41.6",
     "webpack-command": "^0.2.1"
   },
   "scripts": {
