@@ -4,15 +4,15 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "dat.gui": "^0.7.2",
-    "live-server": "^1.2.1",
-    "three": "^0.92.0",
+    "dat.gui": "^0.7.9",
+    "live-server": "^1.2.2",
+    "three": "0.165.0",
     "three-orbit-controls": "^82.1.0",
     "tree-model": "^1.0.7"
   },
   "devDependencies": {
     "webpack": "^4.41.6",
-    "webpack-command": "^0.2.1"
+    "webpack-command": "^0.5.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
