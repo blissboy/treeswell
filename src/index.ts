@@ -1,8 +1,28 @@
 "use strict";
-var THREE = require('THREE');
-var OrbitControls = require('three-orbit-controls')(THREE);
-var TreeModel = require('tree-model');
-var dat = require("dat.gui");
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import TreeModel, {Node} from 'tree-model';
+import * as dat from 'dat.gui';
+
+
+// import {
+//     Material,
+//     Vector3,
+//     Color,
+//     Group,
+//     Scene,
+//     PerspectiveCamera,
+//     WebGLRenderer,
+//     PointLight,
+//     Mesh,
+//     TubeGeometry,
+//     CatmullRomCurve3,
+//     Spherical,
+//     MeshBasicMaterial,
+//     Object3D, MeshPhongMaterial, DoubleSide
+// } from 'three';
+// import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+// import {LocationAndNormal, MaterialUpdateFunction} from "./types/types";
 
 const NUM_BRANCHES = 10;
 const GROWTH_STEPS = 200;
@@ -24,37 +44,46 @@ const TUBE_RADIUS = 50;
 var nextTreeNodeId = 0;
 
 var branchNumber = 0;
-var branchGroup;
-var fadingGroup;
+let branchGroup: THREE.Group;
+let fadingGroup: THREE.Group;
 var rotate = false;
 
-var scene, camera, renderer, cameraControls;
-var renderCount = 0;
-var gui;
+let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer;
+let cameraControls: { update: () => void; maxAzimuthAngle: number; maxPolarAngle: number; target: THREE.Vector3; autoRotate: boolean; };
 
-var framecount = 0;
 
-var tree;
+let framecount = 0;
+let tree: TreeModel;
+let gui: dat.GUI;
 
-Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+// @ts-ignore
+Number.prototype.map = function (in_min: number, in_max: number, out_min: number, out_max: number) {
+    // @ts-ignore
     return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+export type LocationAndNormal = {
+    location: THREE.Vector3,
+    normal: THREE.Vector3
+};
+
+export type MaterialUpdateFunction = (mesh: THREE.Mesh, index: number) => void;
+console.log('powpows')
 newInit();
 animate();
 
 
-function animate() {
+function animate(): void {
     requestAnimationFrame(animate);
     updateScene();
     cameraControls.update();
     renderer.render(scene, camera);
 }
 
-function newInit() {
+function newInit(): void {
     gui = new dat.GUI();
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000000);
+    camera = new THREE.PerspectiveCamera(280, window.innerWidth / window.innerHeight, 0.1, 100000);
     camera.position.x = MAX_TREE_HEIGHT * .29;
     camera.position.y = MAX_TREE_HEIGHT * .63;
     camera.position.z = MAX_TREE_HEIGHT * .25;
@@ -64,13 +93,15 @@ function newInit() {
     renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 1);
+    renderer.setClearColor(0xffffff, 1);
     document.body.appendChild(renderer.domElement);
+
 
     cameraControls = new OrbitControls(camera, renderer.domElement);
     cameraControls.maxAzimuthAngle = Math.PI / 2;
     cameraControls.maxPolarAngle = Math.PI / 2;
-    cameraControls.target = new THREE.Vector3(-2722, 32248, -4674);
+    //cameraControls.target = new THREE.Vector3(-2722, 32248, -4674);
+    cameraControls.target = new THREE.Vector3(0, 0, 0);
     cameraControls.update();
 
     //orbit.enableZoom = false;
@@ -101,10 +132,11 @@ function newInit() {
     fadingGroup.name = 'fadingGroup';
     scene.add(fadingGroup);
 
+    console.log('new branchgroup');
     branchGroup = new THREE.Group();
     scene.add(branchGroup);
-
-    createTree(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
+    console.log('create tree')
+    const tree = createTree(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
 
     window.addEventListener('resize', function () {
@@ -122,7 +154,11 @@ function newInit() {
                 let image = new Image();
                 image.src = imgData;
                 let w = window.open("data:image/jpg;base64," + imgData);
-                w.document.write(image.outerHTML);
+                if (w) {
+                    w.document.write(image.outerHTML);
+                } else {
+                    console.log("Browser does not support taking screenshot of 3d context");
+                }
             } catch (e) {
                 console.log("Browser does not support taking screenshot of 3d context");
                 return;
@@ -138,10 +174,10 @@ function newInit() {
     });
 }
 
-function shouldKeepGoing(branchNodesToSplit) {
+function shouldKeepGoing(branchNodesToSplit: Node<any>[]): boolean {
     let pointsRet = branchNodesToSplit.filter((branch) => {
         //console.log(branch.model.points);
-        let aboveZ = branch.model.points.filter((point) => {
+        let aboveZ = branch.model.points.filter((point: THREE.Vector3) => {
             //console.log(point);
             return point && point.z && point.z > MAX_TREE_HEIGHT;
         });
@@ -150,7 +186,7 @@ function shouldKeepGoing(branchNodesToSplit) {
     return !pointsRet.length;
 }
 
-function createTree(treeHeight, spread, yStep) {
+function createTree(treeHeight: number, spread: number, yStep: number): TreeModel {  // TODO: should this return a tree model?
     // start from zero (root node)
 
     tree = new TreeModel();
@@ -161,8 +197,6 @@ function createTree(treeHeight, spread, yStep) {
             new THREE.Vector3(0, STUMP_HEIGHT, 0)]
     });
 
-
-
     let keepGrowing = true;
     let branchNodesToSplit = [trunkNode];
     while (keepGrowing) {
@@ -170,6 +204,7 @@ function createTree(treeHeight, spread, yStep) {
         keepGrowing = shouldKeepGoing(branchNodesToSplit);
     }
 
+    return tree;
     // console.log(trunkNode);
     //
     // trunkNode.walk((node) => {
@@ -203,11 +238,11 @@ function createTree(treeHeight, spread, yStep) {
  * @param branch
  * @returns the branch collar (point and normal)
  */
-function getBranchEndInfo(branch) {
+function getBranchEndInfo(branch: Node<any>): LocationAndNormal {
     // let point1 = branch.model.points[branch.model.points.length - 1];
     // let point2 = branch.model.points[branch.model.points.length - 2];
     //
-    // let whatIsThis = new THREE.Vector3(point1.x - point2.x, point1.y - point2.y, point1.z - point2.z);
+    // let whatIsThis = new THREE.THREE.Vector3(point1.x - point2.x, point1.y - point2.y, point1.z - point2.z);
     // console.log(whatIsThis);
     //
     return {
@@ -221,7 +256,7 @@ function getBranchEndInfo(branch) {
  * @param splitPoint
  * @returns {undefined}
  */
-function getNewBranchStarts(branch) {
+function getNewBranchStarts(branch: TreeModel.Node<any>): LocationAndNormal[] {
     let splitPoint = getBranchEndInfo(branch);
 
     // this is the exact place where we decide how branches split
@@ -249,7 +284,7 @@ function getNewBranchStarts(branch) {
 
 }
 
-function getNewStart(startPoint, sphCoordOfNormalEnd, phiChange, thetaChange) {
+function getNewStart(startPoint: THREE.Vector3, sphCoordOfNormalEnd: THREE.Spherical, phiChange: number, thetaChange: number): LocationAndNormal {
     return {
         location: startPoint,
         normal: new THREE.Vector3().setFromSpherical(new THREE.Spherical(
@@ -260,8 +295,8 @@ function getNewStart(startPoint, sphCoordOfNormalEnd, phiChange, thetaChange) {
 }
 
 
-function addForkBranchesToNodes(branchesToSplit) {
-    let newBranches = [];
+function addForkBranchesToNodes(branchesToSplit: Node<any>[]): Node<any>[] {
+    let newBranches: Node<any>[] = [];
 
     branchesToSplit.forEach(branch => {
         getNewBranchStarts(branch).forEach((branchStart) => {
@@ -278,11 +313,12 @@ function addForkBranchesToNodes(branchesToSplit) {
  * @param branchStart the location and normal of the start of the branch
  * @param branchThisComesFrom
  */
-function createBranch(branchStart, branchThisComesFrom) {
+function createBranch(branchStart: LocationAndNormal, branchThisComesFrom: Node<any>): Node<any> {
     let branchNode = tree.parse({
         name: nextTreeNodeId++,
         points: [
             branchStart.location,
+            // @ts-ignore
             branchStart.location + (branchStart.normal.multiplyScalar(Math.random() * 1000))
         ]
     });
@@ -295,7 +331,7 @@ function createBranch(branchStart, branchThisComesFrom) {
 }
 
 
-function createBranchCurve(treeHeight, spread, yStep) {
+function createBranchCurve(treeHeight: number, spread: number, yStep: number): { curve: THREE.CatmullRomCurve3, name: string } {
     let x = 0, y = 0, z = 0, unity;
     let points = [];
     while (y < treeHeight) {
@@ -315,36 +351,36 @@ function createBranchCurve(treeHeight, spread, yStep) {
     };
 }
 
-function createCurveFromPoints(curve) {
+function createCurveFromPoints(curve: THREE.Vector3[]): THREE.CatmullRomCurve3 {
     return new THREE.CatmullRomCurve3(curve); //, false, 'chordal', 0.5);
 }
 
-function freshenBranches() {
+function freshenBranches(): void {
     if (branchGroup.children.length < NUM_BRANCHES) {
         let newBranch = createBranchCurve(MAX_TREE_HEIGHT, SPREAD, Z_STEP);
 
         branchGroup.add(new THREE.Mesh(
-            new THREE.TubeBufferGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, TUBE_RADIUS, 16, false),
+            new THREE.TubeGeometry(newBranch.curve, NUM_POINTS_ON_BRANCH, TUBE_RADIUS, 16, false),
             newBranchMaterial())
         );
     }
 }
 
-function newFadingBranch(branch) {
+function newFadingBranch(branch: THREE.Mesh): void {   //TODO: should probably be renamed to "addFadingBranch"
     branch.material = newFadingMaterial();
     fadingGroup.add(branch);
 }
 
-function pruneBranches() {
+function pruneBranches(): void {
     updateGrowingBranches();
     updateFadingBranches();
 }
 
-function updateGrowingBranches() {
+function updateGrowingBranches(): void {
     updateBranchGroupMaterial(
         branchGroup,
-        (mesh, index) => {
-            let material = mesh.material;
+        (mesh: THREE.Mesh, index: number) => {
+            let material = mesh.material as THREE.MeshBasicMaterial;
             material.opacity = doubleCircleSigmoid(material.userData.frames.map(0, GROWTH_STEPS, 0.0, 1.0), .63);
             material.color.r = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.r, MID_COLOR.r));
             material.color.g = (material.userData.frames.map(0, GROWTH_STEPS, START_COLOR.g, MID_COLOR.g));
@@ -352,20 +388,20 @@ function updateGrowingBranches() {
             material.userData.frames = material.userData.frames + 1;
         }
     );
-
-    branchGroup.children.filter((branch) => branch.material.userData.frames > GROWTH_STEPS)
-        .forEach((branch) => newFadingBranch(branchGroup.children.shift()));
+    // @ts-ignore
+    branchGroup.children.filter((branch) => branch.material.userData.frames > GROWTH_STEPS).forEach((branch) => newFadingBranch(branchGroup.children.shift()));
 }
 
-function updateFadingBranches() {
+function updateFadingBranches(): void {
     if (fadingGroup && fadingGroup.children) {
-        let removeList = [];
+        let removeList: number[] = [];
 
         updateBranchGroupMaterial(
             fadingGroup,
-            (mesh, index) => {
-                let material = mesh.material;
+            (mesh: THREE.Mesh, index: number) => {
+                let material: THREE.MeshBasicMaterial = mesh.material as THREE.MeshBasicMaterial;
                 material.opacity = material.userData.frames.map(0, FADING_STEPS, 1.0, 0.0);
+                // @ts-ignore
                 material.emissiveIntensity = material.userData.frames.map(0, FADING_STEPS, 1.0, 0.0);
                 //material.opacity = 1.0;
                 material.color.r = (material.userData.frames.map(0, FADING_STEPS, MID_COLOR.r, FINAL_COLOR.r));
@@ -378,7 +414,8 @@ function updateFadingBranches() {
                     material.dispose();
                 } else if (material.userData.frames % 24 === 0) {
                     let currentGeom = mesh.geometry;
-                    mesh.geometry = new THREE.TubeBufferGeometry(
+                    mesh.geometry = new THREE.TubeGeometry(
+                        // @ts-ignore
                         currentGeom.parameters.path,
                         Math.trunc(material.userData.frames.map(0, FADING_STEPS, NUM_POINTS_ON_BRANCH, NUM_POINTS_ON_BRANCH / 2)),
                         material.userData.frames.map(0, FADING_STEPS, TUBE_RADIUS, 1),
@@ -402,16 +439,18 @@ function updateFadingBranches() {
 
         removeList = removeList.reverse();
         removeList.forEach((index) => {
+            // @ts-ignore
             fadingGroup.children[index].material.dispose();
+            // @ts-ignore
             fadingGroup.children[index].geometry.dispose();
             fadingGroup.children.splice(index, 1);
         });
     }
 }
 
-function updateBranchGroupMaterial(group, materialUpdateFunction) {
-    group.children.forEach((branch, index) => {
-        materialUpdateFunction(branch, index);
+function updateBranchGroupMaterial(group: THREE.Group, materialUpdateFunction: MaterialUpdateFunction): void{
+    group.children.forEach((branch: THREE.Object3D, index) => {
+        materialUpdateFunction(branch as THREE.Mesh, index);
     });
 }
 
@@ -428,10 +467,10 @@ function newFadingMaterial() {
             frames: 0
         }
         // },
-        // blend: THREE.CustomBlending,
-        // blendEquationAlpha: THREE.MaxEquation,
-        // blendSrcAlpha: THREE.ZeroFactor,
-        // blendDstAlpha: THREE.DstAlphaFactor
+        // blend: CustomBlending,
+        // blendEquationAlpha: MaxEquation,
+        // blendSrcAlpha: ZeroFactor,
+        // blendDstAlpha: DstAlphaFactor
     });
 }
 
@@ -460,7 +499,7 @@ function updateScene() {
     //processFadeouts();
 }
 
-function doubleCircleSigmoid(x, a) { // see http://www.flong.com/texts/code/shapers_circ/
+function doubleCircleSigmoid(x: number, a: number): number  { // see http://www.flong.com/texts/code/shapers_circ/
 
     if (x <= a) {
         return a - Math.sqrt(a * a - x * x);

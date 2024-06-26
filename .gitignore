@@ -2,4 +2,8 @@
 .DS_Store
 .idea
 node_modules
-dist/bundle.*
+dist/
+# This line includes dist/index.html in the repository, even though the dist/ directory is ignored
+!dist/index.html
+attic
+hold_for_later
